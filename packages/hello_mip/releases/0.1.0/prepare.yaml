@@ -1,0 +1,19 @@
+name: hello_mip
+description: "Simple test package for verifying the build pipeline"
+version: "0.1.0"
+dependencies: []
+homepage: ""
+repository: ""
+license: "MIT"
+
+defaults:
+  release_number: 1
+  prepare:
+    clone_git:
+      url: "https://github.com/mip-org/hello_mip.git"
+      destination: "hello_mip"
+  addpaths:
+    - path: "hello_mip"
+
+builds:
+  - architectures: [any]

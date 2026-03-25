@@ -1,8 +1,7 @@
-# Channel configuration — update this after forking.
+# Channel configuration — update this after creating from template.
 #
-# channel:     A short name for your channel (e.g., "mylab")
+# channel:     A short name for your channel (must match repo name: mip-<channel>)
 # github_repo: The GitHub owner/repo where this channel lives
-#              (used to upload/download package assets from GitHub Releases)
 
-channel: CHANGE_ME
-github_repo: OWNER/REPO
+channel: example
+github_repo: mip-org/mip-example
