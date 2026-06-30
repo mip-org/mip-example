@@ -1,17 +1,9 @@
-# macOS
+build/
+__pycache__/
+*.pyc
 .DS_Store
 
-# MATLAB
-*.asv
-
-# Python
-__pycache__/
-*.py[codz]
-build/
-dist/
-*.egg-info/
-*.spec
-*.dist
-
-# Visual Studio Code
-.vscode/
+# Repos cloned into the workspace during CI (the MIP runtime and the shared
+# tooling); never committed to the channel.
+/mip/
+/mip_channel_tools/
