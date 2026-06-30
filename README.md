@@ -1,79 +1,102 @@
-# MIP Channel
+# mip-example
 
-This repo is a [MIP](https://mip.sh) package channel. It hosts MATLAB packages as GitHub Release assets and publishes a package index via GitHub Pages.
+Example MIP package channel — a minimal channel with a single demo package, `hello_mip`, illustrating the channel layout and build pipeline.
 
-## Creating your own channel
+A MIP package channel. Builds run one (package, architecture) at a time. They are triggered automatically on push to `main`, daily via a scheduled probe, or manually via a GitHub issue.
 
-1. **Create from template** — click "Use this template" on [mip-org/mip-channel-base](https://github.com/mip-org/mip-channel-base) and name the new repo `mip-<channel_name>` (e.g., `mip-mylab`). The repo name must match the channel name.
-2. **Enable GitHub Pages** — go to Settings > Pages and set source to "GitHub Actions".
-4. **Edit `channel.yaml`** — set `channel` to your channel name and `github_repo` to your `owner/mip-<channel_name>`.
-5. **Add packages** — create directories under `packages/` (see below).
-6. **Push to `main`** — the CI workflow will build, upload, and index your packages automatically.
+## Auto-build on push
 
-## Adding a package
+Pushes to `main` run the `push-build.yml` workflow, which diffs the push and dispatches `build-package.yml` once per `(package, architecture)` pair affected by the change.
 
-Create `packages/<name>/releases/<version>/prepare.yaml`:
+A file affects `packages/<name>/<version>` iff its path lies inside that directory. Each affected package expands to every arch declared in its `mip.yaml`, intersected with the channel's supported arches (`any`, `linux_x86_64`, `macos_arm64`, `windows_x86_64`). Packages with no channel-side `mip.yaml` expand to all four.
 
-```yaml
-name: my_package
-description: "What this package does"
-version: "1.0.0"
-dependencies: []
-homepage: ""
-repository: ""
-license: "MIT"
+Changes outside `packages/` (workflows, README) do not trigger any builds. Deleted packages are skipped. The skip-if-unchanged logic still applies — pushes that don't change a package's source hash short-circuit at the prepare step.
 
-defaults:
-  release_number: 1
-  prepare:
-    clone_git:
-      url: "https://github.com/someone/some-matlab-repo.git"
-      destination: "my_package"
-  addpaths:
-    - path: "my_package"
+## Scheduled rebuild
 
-builds:
-  - architectures: [any]
-```
+Daily at 06:00 UTC, `scheduled-build.yml` probes every (package, architecture) pair in the channel by running `mip-channel prepare` for each. A pair "needs rebuilding" iff its `.mhl` is missing on GitHub Releases or its source hash no longer matches — typically because an upstream git branch (e.g. `master`, `main`) advanced. Pairs that need rebuilding are dispatched to `build-package.yml`.
 
-Package names must use underscores (not hyphens). The version in the YAML must match the release folder name.
-
-## Staying up to date
-
-To pull in the latest infrastructure (scripts, workflows) from the base repo:
+The workflow can also be invoked manually:
 
 ```bash
-# First time only:
-git remote add base https://github.com/mip-org/mip-channel-base.git
-
-# To update:
-git fetch base
-git merge base/main --allow-unrelated-histories
+gh workflow run scheduled-build.yml
 ```
 
-The `--allow-unrelated-histories` flag is needed because template repos don't share git history with the base. Your `channel.yaml` and `packages/` won't conflict since those are channel-specific.
+## Submitting a build
 
-## How it works
+Open an issue. The title must start with `Build` (case-insensitive). The body lists one or more build lines:
 
-On every push to `main`, GitHub Actions:
-
-1. **Prepares** packages — clones/downloads source, computes MATLAB paths, generates metadata
-2. **Compiles** packages — runs MATLAB compile scripts if specified
-3. **Bundles** packages — creates `.mhl` files (ZIP archives)
-4. **Uploads** packages — stores `.mhl` files as GitHub Release assets (one release per package-version)
-5. **Assembles index** — collects metadata from all releases into `index.json`
-6. **Deploys** — publishes `index.json` and `packages.html` to GitHub Pages
-
-The MATLAB client (`mip install <package>`) fetches the index from GitHub Pages and downloads `.mhl` files from the releases.
-
-## Using this channel in MATLAB
-
-Channels are specified as `gh_user/ch_name`, which maps to the repo `https://github.com/gh_user/mip-ch_name`.
-
-```matlab
-% Install a package from your channel
-mip install --channel gh_user/ch_name <package_name>
-
-% List available packages on your channel
-mip avail --channel gh_user/ch_name
 ```
+<name>@<release> <architecture>
+```
+
+Multiple architectures on one line dispatch multiple builds for that package. Multiple lines dispatch multiple packages. Lines without a package reference are ignored.
+
+Example body:
+
+```
+foo@1.0.0 any
+bar@2.0 linux_x86_64 macos_arm64
+```
+
+Within ~30s the request bot replies with the list of `(package, architecture)` pairs it parsed (or an error list). If an admin — anyone with write access on the repo — opened the issue, the builds dispatch automatically. Otherwise an admin replies `approve` on its own line to dispatch.
+
+### Architecture keywords
+
+- `any` — pure MATLAB; runs on ubuntu.
+- `linux_x86_64`, `macos_arm64`, `windows_x86_64` — native; run on the matching OS.
+- `all` — expand to every arch declared in the package's `mip.yaml` (intersected with the four above). A package with no channel-side `mip.yaml` cannot expand `all`.
+
+A build for an architecture the package does not declare exits cleanly with nothing to do.
+
+### Building every package in one go
+
+Replace the package reference with the literal keyword `all-packages` to fan out across the channel:
+
+```
+all-packages linux_x86_64
+all-packages all
+```
+
+`all-packages` must be the first token of the line (after any leading whitespace).
+
+### Skip-if-unchanged and `force`
+
+By default, a build that would produce a `.mhl` matching what is already published (same source hash, same metadata) short-circuits. Re-submitting the same issue is therefore a no-op.
+
+To rebuild anyway, append `force` to a build line:
+
+```
+foo@1.0.0 linux_x86_64 force
+```
+
+`force` applies only to the line it is on.
+
+### Approval
+
+Builds dispatch automatically when an admin — anyone with write access on the repo — opens the build issue. For an issue opened by anyone else, builds dispatch only when an admin replies with `approve` on its own line; emoji reactions and `approve` embedded in prose do not count.
+
+### Editing an issue
+
+Editing a submitted issue does not re-validate. To change anything, open a new issue.
+
+## Direct dispatch
+
+The same effect from the command line:
+
+```bash
+gh workflow run build-package.yml \
+  -f package_path=packages/<name>/<version> \
+  -f architecture=<arch> \
+  -f force=false
+```
+
+Regenerate the channel index without rebuilding:
+
+```bash
+gh workflow run assemble-index.yml
+```
+
+## Layout
+
+Each package release lives at `packages/<name>/<release>/` with a `source.yaml` (where the source comes from — a git repo, a zip, or nothing for in-channel source) and usually a `mip.yaml` (metadata and supported architectures). The build engine, reusable workflows, and GitHub Pages site template all live in `mip-org/mip_channel_tools`; the workflows here are thin callers that delegate to it.

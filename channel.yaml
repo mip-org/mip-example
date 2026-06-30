@@ -1,7 +1,0 @@
-# Channel configuration — update this after creating from template.
-#
-# channel:     A short name for your channel (must match repo name: mip-<channel>)
-# github_repo: The GitHub owner/repo where this channel lives
-
-channel: example
-github_repo: mip-org/mip-example
