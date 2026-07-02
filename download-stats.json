@@ -1,5 +1,5 @@
 {
-  "generated": "2026-07-01T10:28:10Z",
+  "generated": "2026-07-02T09:41:40Z",
   "repo": "mip-org/mip-example",
   "total_lifetime_downloads": 2,
   "assets": {
@@ -10,7 +10,7 @@
       "asset_id": 381586694,
       "created_at": "2026-03-25T22:10:51Z",
       "first_seen": "2026-07-01T10:28:10Z",
-      "updated": "2026-07-01T10:28:10Z"
+      "updated": "2026-07-02T09:41:40Z"
     },
     "hello_mip-main/hello_mip-main-any.mhl": {
       "lifetime": 0,
@@ -19,7 +19,7 @@
       "asset_id": 462236189,
       "created_at": "2026-06-30T14:37:31Z",
       "first_seen": "2026-07-01T10:28:10Z",
-      "updated": "2026-07-01T10:28:10Z"
+      "updated": "2026-07-02T09:41:40Z"
     }
   }
 }
